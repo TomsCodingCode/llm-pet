@@ -1,0 +1,17 @@
+{
+  "files.autoSave": "afterDelay",
+  "editor.formatOnSave": true,
+  "python-envs.defaultEnvManager": "ms-python.python:poetry",
+  "python-envs.defaultPackageManager": "ms-python.python:poetry",
+  "editor.tabSize": 4,
+  "cSpell.words": [
+    "dataloaders",
+    "overfitting",
+    "pytorch",
+    "tinystories",
+    "tril",
+    "vocab"
+  ],
+  "editor.defaultFormatter": "charliermarsh.ruff",
+  "notebook.defaultFormatter": "charliermarsh.ruff",
+}
