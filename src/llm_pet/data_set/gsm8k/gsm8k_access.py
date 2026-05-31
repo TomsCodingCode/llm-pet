@@ -41,9 +41,9 @@ def question_to_example(question, answer, max_context):
     if len(full) - 1 > max_context:
         return None
 
-    # truncate: keep the most recent max_context tokens of the question
-    ctx_ids = encode(question)[-max_context:]
-    if len(ctx_ids) == 0:
+    # discard: the full question must fit within max_context
+    ctx_ids = encode(question)
+    if len(ctx_ids) > max_context:
         return None
 
     return ctx_ids, full[:-1], full[1:]
