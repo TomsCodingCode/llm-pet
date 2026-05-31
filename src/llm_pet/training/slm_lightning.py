@@ -17,9 +17,11 @@ class SLMLightning(pl.LightningModule):
         learning_rate=3e-4,
         max_steps=20000,
         lr_patience=10,
+        kl_reference=None,
+        kl_coef=0.1,
     ):
         super().__init__()
-        self.save_hyperparameters()
+        self.save_hyperparameters(ignore=["kl_reference"])
         self.model = Transformer(
             num_layers=num_layers,
             dim=dim,
@@ -30,6 +32,9 @@ class SLMLightning(pl.LightningModule):
         )
         self.learning_rate = learning_rate
         self.max_steps_total = max_steps
+        self.lr_patience = lr_patience
+        self.kl_reference = kl_reference  # optional frozen model for KL penalty in finetuning
+        self.kl_coef = kl_coef
 
     def forward(self, x, context, x_pad_mask=None, context_pad_mask=None):
         return self.model(
@@ -52,6 +57,18 @@ class SLMLightning(pl.LightningModule):
             target.long().reshape(-1),
             ignore_index=PAD_ID,
         )  # ignore padded targets
+        if self.kl_reference is not None:
+            with torch.no_grad():
+                ref_logits = self.kl_reference.model(
+                    x,
+                    context,
+                    x_pad_mask=x_pad_mask,
+                    context_pad_mask=context_pad_mask,
+                )
+            logp = torch.log_softmax(logits, dim=-1)
+            logp_ref = torch.log_softmax(ref_logits, dim=-1)
+            kl_loss = torch.nn.functional.kl_div(logp, logp_ref, reduction="batchmean")
+            loss += self.kl_coef * kl_loss
         return loss
 
     def training_step(self, batch, batch_idx):
@@ -66,12 +83,10 @@ class SLMLightning(pl.LightningModule):
 
     def configure_optimizers(self):
         opt = torch.optim.AdamW(self.parameters(), lr=self.learning_rate)
-        sched = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            opt, factor=0.2, patience=self.hparams.lr_patience
-        )
+        sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=self.max_steps_total)
         return {
             "optimizer": opt,
-            "lr_scheduler": {"scheduler": sched, "interval": "epoch", "monitor": "val_loss",},
+            "lr_scheduler": {"scheduler": sched, "interval": "step"},
         }
 
     @torch.no_grad()
