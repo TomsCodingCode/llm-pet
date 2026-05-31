@@ -11,16 +11,15 @@ requires-python = "~=3.12"
 dependencies = [
     "torch~=2.2.2 ; sys_platform == 'darwin'",
     "torch>=2.2.2 ; sys_platform == 'linux'",
-    "requests (>=2.34.2,<3.0.0) ; sys_platform == 'darwin'",
-    "requests>=2.34.2 ; sys_platform == 'linux'",
     "numpy (>=1.26.4,<2.0.0) ; sys_platform == 'darwin'",
-    "numpy>=1.26.4 ; sys_platform == 'linux'",
-    "tqdm (>=4.67.3,<5.0.0) ; sys_platform == 'darwin'",
-    "tqdm>=4.67.3 ; sys_platform == 'linux'",
-    "lightning (>=2.6.5,<3.0.0) ; sys_platform == 'darwin'",
-    "lightning>=2.6.5 ; sys_platform == 'linux'",
+    "numpy>=2.0.0 ; sys_platform == 'linux'",
     "pandas[parquet] (<3.0.0) ; sys_platform == 'darwin'",
-    "pandas[parquet]>=2.2.0 ; sys_platform == 'linux'"
+    "pandas[parquet]>=2.2.0 ; sys_platform == 'linux'",
+
+    # these are independent of the torch version
+    "requests (>=2.32.4,<3.0.0)",
+    "tqdm (>=4.67.3,<5.0.0)",
+    "lightning (>=2.6.5,<3.0.0)"
 ]
 
 [dependency-groups]
