@@ -16,6 +16,7 @@ class SLMLightning(pl.LightningModule):
         p_drop=0.1,
         learning_rate=3e-4,
         max_steps=20000,
+        lr_patience=10,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -30,20 +31,20 @@ class SLMLightning(pl.LightningModule):
         self.learning_rate = learning_rate
         self.max_steps_total = max_steps
 
-    def forward(self, dec_in, context, dec_in_pad_mask=None, context_pad_mask=None):
+    def forward(self, x, context, x_pad_mask=None, context_pad_mask=None):
         return self.model(
-            dec_in,
+            x,
             context,
-            x_pad_mask=dec_in_pad_mask,
+            x_pad_mask=x_pad_mask,
             context_pad_mask=context_pad_mask,
         )
 
     def _step(self, batch):
-        context, dec_in, target, context_pad_mask, dec_in_pad_mask = batch
+        context, x, target, context_pad_mask, x_pad_mask = batch
         logits = self.model(
-            dec_in,
+            x,
             context,
-            x_pad_mask=dec_in_pad_mask,
+            x_pad_mask=x_pad_mask,
             context_pad_mask=context_pad_mask,
         )  # (B, T, V)
         loss = torch.nn.functional.cross_entropy(
@@ -65,13 +66,12 @@ class SLMLightning(pl.LightningModule):
 
     def configure_optimizers(self):
         opt = torch.optim.AdamW(self.parameters(), lr=self.learning_rate)
-        # cosine decay to ~1/10th of the base LR over the full training run
-        sched = torch.optim.lr_scheduler.CosineAnnealingLR(
-            opt, T_max=self.max_steps_total, eta_min=self.learning_rate * 0.1
+        sched = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            opt, factor=0.2, patience=self.hparams.lr_patience
         )
         return {
             "optimizer": opt,
-            "lr_scheduler": {"scheduler": sched, "interval": "step"},
+            "lr_scheduler": {"scheduler": sched, "interval": "epoch", "monitor": "val_loss",},
         }
 
     @torch.no_grad()
