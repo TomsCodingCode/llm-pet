@@ -1,5 +1,9 @@
 import re
 
+import torch
+
+from ...data_set.vocab import BOS_ID
+
 # IMPORTANT — format markers.
 # This model was fine-tuned on GSM8k, whose answers mark each calculator step
 # with DOUBLE ANGLE BRACKETS "<<expr=result>>" and the final answer with FOUR
@@ -137,3 +141,20 @@ def compute_reward(gen_text, gold_text):
     reward += W_FORMAT_GOOD if count_final_lines(gen_text) == 1 else W_FORMAT_BAD
 
     return reward
+
+
+@torch.no_grad()
+def reference_logps(ref_policy, context_ids, token_ids):
+    """Log-probs of an ALREADY-SAMPLED token sequence under the frozen reference
+    model -- used for the KL penalty. Teacher-forced in one pass over the tokens
+    the policy actually produced."""
+    mc = ref_policy.hparams.max_context
+    device = ref_policy.device
+    context = torch.tensor([context_ids[-mc:]], device=device)
+    # decoder input is <bos> + all but the last produced token
+    dec_in = torch.tensor([[BOS_ID] + token_ids.tolist()[:-1]], device=device)[:, :mc]
+    logits = ref_policy.model(dec_in, context)  # (1, L, V)
+    logprobs = torch.log_softmax(logits, dim=-1)[0]  # (L, V)
+    L = min(len(token_ids), logprobs.size(0))
+    idx = token_ids[:L].unsqueeze(1)
+    return logprobs[:L].gather(-1, idx).squeeze(1)  # (L,)
